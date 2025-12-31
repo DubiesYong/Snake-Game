@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<title>Snake Game</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  height:100vh;
+
+  /* 🌿 BACKGROUND BARU (GANTI HITAM) */
+  background: radial-gradient(circle, #1a2f1a, #0b140b);
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+}
+canvas{
+  border:4px solid #00ff00;
+  touch-action:none;
+}
+.menu{
+  margin-bottom:6px;
+}
+button,select{
+  padding:6px 10px;
+  font-size:14px;
+}
+.info{
+  margin:5px;
+}
+#pauseOverlay{
+  position:absolute;
+  background:rgba(0,0,0,.8);
+  padding:20px 30px;
+  display:none;
+  border:2px solid #0f0;
+  text-align:center;
+}
+</style>
+</head>
+<body>
+
+<div class="menu">
+  Level:
+  <select id="level">
+    <option value="150">Easy</option>
+    <option value="100" selected>Normal</option>
+    <option value="60">Hard</option>
+  </select>
+
+  Skin:
+  <select id="skin"></select>
+
+  <button onclick="startGame()">Start</button>
+  <button onclick="togglePause()">Pause</button>
+</div>
+
+<div class="info">
+  Score: <span id="score">0</span> |
+  High Score: <span id="highScore">0</span>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="pauseOverlay">
+  <h2>⏸ PAUSED</h2>
+  <button onclick="togglePause()">Resume</button><br><br>
+  <button onclick="startGame()">Restart</button>
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const size=Math.min(innerWidth,innerHeight)-180;
+canvas.width=size;
+canvas.height=size;
+
+const grid=20;
+const tile=canvas.width/grid;
+
+let snake,apple,dir,score,speed,loop;
+let running=false,paused=false;
+let snakeColor="lime";
+
+const skins=[
+ {name:"Green",color:"lime",unlock:0},
+ {name:"Blue 🔒",color:"cyan",unlock:5},
+ {name:"Yellow 🔒",color:"yellow",unlock:10},
+ {name:"Red 🔒",color:"red",unlock:20}
+];
+
+const skinSelect=document.getElementById("skin");
+const highScoreEl=document.getElementById("highScore");
+highScoreEl.textContent=localStorage.getItem("snakeHigh")||0;
+
+function updateSkinMenu(){
+ skinSelect.innerHTML="";
+ skins.forEach(s=>{
+  const o=document.createElement("option");
+  o.value=s.color;
+  o.textContent=score>=s.unlock?s.name.replace(" 🔒",""):s.name;
+  o.disabled=score<s.unlock;
+  skinSelect.appendChild(o);
+ });
+}
+updateSkinMenu();
+
+function startGame(){
+ clearInterval(loop);
+ speed=document.getElementById("level").value;
+ snakeColor=skinSelect.value;
+ score=0;
+ running=true;
+ paused=false;
+ document.getElementById("pauseOverlay").style.display="none";
+ document.getElementById("score").textContent=score;
+ snake=[{x:10,y:10}];
+ dir={x:1,y:0};
+ apple=spawnApple();
+ loop=setInterval(gameLoop,speed);
+}
+
+function togglePause(){
+ if(!running)return;
+ paused=!paused;
+ document.getElementById("pauseOverlay").style.display=paused?"block":"none";
+}
+
+function spawnApple(){
+ return{x:Math.floor(Math.random()*grid),y:Math.floor(Math.random()*grid)};
+}
+
+function gameLoop(){
+ if(!running||paused)return;
+ const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+ if(head.x<0||head.y<0||head.x>=grid||head.y>=grid)return endGame();
+ for(let s of snake)if(s.x===head.x&&s.y===head.y)return endGame();
+ snake.unshift(head);
+ if(head.x===apple.x&&head.y===apple.y){
+  score++;
+  document.getElementById("score").textContent=score;
+  updateSkinMenu();
+  apple=spawnApple();
+ }else snake.pop();
+ draw();
+}
+
+function draw(){
+ for(let y=0;y<grid;y++){
+  for(let x=0;x<grid;x++){
+   ctx.fillStyle=(x+y)%2?"#2f8f2f":"#267a26";
+   ctx.fillRect(x*tile,y*tile,tile,tile);
+  }
+ }
+ ctx.fillStyle="red";
+ ctx.fillRect(apple.x*tile,apple.y*tile,tile,tile);
+ ctx.fillStyle=snakeColor;
+ snake.forEach(s=>ctx.fillRect(s.x*tile,s.y*tile,tile-1,tile-1));
+}
+
+function endGame(){
+ running=false;
+ let high=localStorage.getItem("snakeHigh")||0;
+ if(score>high){
+  localStorage.setItem("snakeHigh",score);
+  highScoreEl.textContent=score;
+ }
+ setTimeout(()=>alert("GAME OVER 😵\nScore: "+score),200);
+}
+
+document.addEventListener("keydown",e=>{
+ if(e.key==="p")togglePause();
+ if(!running||paused)return;
+ if((e.key==="ArrowUp"||e.key==="w")&&dir.y===0)dir={x:0,y:-1};
+ if((e.key==="ArrowDown"||e.key==="s")&&dir.y===0)dir={x:0,y:1};
+ if((e.key==="ArrowLeft"||e.key==="a")&&dir.x===0)dir={x:-1,y:0};
+ if((e.key==="ArrowRight"||e.key==="d")&&dir.x===0)dir={x:1,y:0};
+});
+</script>
+
+</body>
+</html>
